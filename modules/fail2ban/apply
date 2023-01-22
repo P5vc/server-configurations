@@ -1,0 +1,21 @@
+mo fail2ban.local > /etc/fail2ban/fail2ban.local
+mo jail.local > /etc/fail2ban/jail.local
+
+rm -rf /etc/fail2ban/jail.d/*
+
+if [ -e /var/log/named/security.log ]
+then
+	mo named.local > /etc/fail2ban/jail.d/named.local
+fi
+
+if [ -e /var/log/nginx ]
+then
+	mo nginx.local > /etc/fail2ban/jail.d/nginx.local
+fi
+
+if [ -e /var/log/mail.log ]
+then
+	mo postfix.local > /etc/fail2ban/jail.d/postfix.local
+fi
+
+systemctl restart fail2ban

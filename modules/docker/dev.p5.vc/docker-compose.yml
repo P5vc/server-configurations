@@ -1,0 +1,206 @@
+networks:
+  cryptpad-net:
+    external: false
+  gitea-net:
+    external: false
+  registry-net:
+    external: false
+
+volumes:
+  cryptpad-blob:
+  cryptpad-block:
+  cryptpad-config:
+  cryptpad-customize:
+  cryptpad-customize-dist:
+  cryptpad-data:
+  cryptpad-datastore:
+  cryptpad-www:
+  gitea-data:
+  gitea-db:
+  registry-auth:
+  registry-storage:
+
+services:
+  cryptpad:
+    image: promasu/cryptpad:v5.2.1
+    networks:
+      - cryptpad-net
+    volumes:
+      - type: volume
+        source: cryptpad-blob
+        target: /cryptpad/blob
+      - type: volume
+        source: cryptpad-block
+        target: /cryptpad/block
+      - type: volume
+        source: cryptpad-config
+        target: /cryptpad/config
+      - type: volume
+        source: cryptpad-customize
+        target: /cryptpad/customize
+      - type: volume
+        source: cryptpad-customize-dist
+        target: /cryptpad/customize.dist
+      - type: volume
+        source: cryptpad-data
+        target: /cryptpad/data
+      - type: volume
+        source: cryptpad-datastore
+        target: /cryptpad/datastore
+      - type: volume
+        source: cryptpad-www
+        target: /cryptpad/www
+    storage_opt:
+      size: '{{ cryptpad_disk_space }}G'
+    restart: always
+  gitea-database:
+    image: postgres:15.1
+    environment:
+      - POSTGRES_USER=gitea
+      - POSTGRES_PASSWORD=gitea
+      - POSTGRES_DB=gitea
+    networks:
+      - gitea-net
+    volumes:
+      - type: volume
+        source: gitea-db
+        target: /var/lib/postgresql/data
+    storage_opt:
+      size: '{{ gitea_database_disk_space }}G'
+    restart: always
+  gitea-server:
+    image: gitea/gitea:1.18
+    ports:
+      - "127.0.0.1:2222:22"
+    environment:
+      - USER_UID=1050
+      - USER_GID=1050
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=gitea-database:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=gitea
+    networks:
+      - gitea-net
+    volumes:
+      - type: bind
+        source: /home/git/.ssh
+        target: /data/git/.ssh
+      - type: volume
+        source: gitea-data
+        target: /data
+      - type: bind
+        source: /etc/timezone
+        target: /etc/timezone
+        read_only: true
+      - type: bind
+        source: /etc/localtime
+        target: /etc/localtime
+        read_only: true
+    storage_opt:
+      size: '{{ gitea_server_disk_space }}G'
+    depends_on:
+      - gitea-database
+    restart: always
+  nginx:
+    image: nginx:1.23
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - cryptpad-net
+      - gitea-net
+      - registry-net
+    volumes:
+      - type: volume
+        source: cryptpad-blob
+        target: /cryptpad/blob
+        read_only: true
+      - type: volume
+        source: cryptpad-block
+        target: /cryptpad/block
+        read_only: true
+      - type: volume
+        source: cryptpad-customize-dist
+        target: /cryptpad/customize.dist
+        read_only: true
+      - type: volume
+        source: cryptpad-www
+        target: /cryptpad/www
+        read_only: true
+      - type: bind
+        source: /etc/letsencrypt
+        target: /letsencrypt
+        read_only: true
+      - type: bind
+        source: /root/transfer/nginx-configs
+        target: /etc/nginx/conf.d
+        read_only: true
+      - type: bind
+        source: /root/transfer/nginx-acme
+        target: /etc/nginx/www/nginx-acme
+        read_only: true
+      - type: bind
+        source: /root/transfer/nginx-dhparam
+        target: /etc/nginx/dhparam
+        read_only: true
+    storage_opt:
+      size: '{{ nginx_disk_space }}G'
+    depends_on:
+      - cryptpad
+      - gitea-server
+      - registry
+    restart: always
+  registry:
+    image: registry:2.8
+    environment:
+      REGISTRY_HTTP_TLS_CERTIFICATE: /root/crypto/certs/registry.crt
+      REGISTRY_HTTP_TLS_KEY: /root/crypto/certs/registry.key
+      REGISTRY_HTTP_ADDR: 0.0.0.0:443
+      REGISTRY_HTTP_HOST: https://registry.{{ secondary_domain }}:443
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /root/crypto/auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+    networks:
+      - registry-net
+    volumes:
+      - type: volume
+        source: registry-auth
+        target: /root/crypto/auth
+      - type: bind
+        source: /root/transfer/registry/certs
+        target: /root/crypto/certs
+        read_only: true
+      - type: volume
+        source: registry-storage
+        target: /var/lib/registry
+    storage_opt:
+      size: '{{ registry_disk_space }}G'
+    restart: always
+  transfer:
+    build:
+      context: /root/transfer
+      dockerfile: /root/transfer/Dockerfile
+    volumes:
+      - type: volume
+        source: cryptpad-customize
+        target: /transfer/destinations/cryptpad
+      - type: bind
+        source: /root/transfer/cryptpad
+        target: /transfer/sources/cryptpad
+      - type: volume
+        source: gitea-data
+        target: /transfer/destinations/gitea-data
+      - type: bind
+        source: /root/transfer/gitea-data
+        target: /transfer/sources/gitea-data
+      - type: volume
+        source: registry-auth
+        target: /transfer/destinations/registry-auth
+      - type: bind
+        source: /root/transfer/registry/auth
+        target: /transfer/sources/registry-auth
+        read_only: true
+    storage_opt:
+      size: '{{ transfer_disk_space }}G'
+    restart: always

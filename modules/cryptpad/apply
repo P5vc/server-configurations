@@ -1,0 +1,11 @@
+mkdir -p /tmp/cryptpad
+
+mo config.js > /tmp/cryptpad/config.js
+mo application_config.js > /tmp/cryptpad/application_config.js
+
+chown -R 4001:4001 /tmp/cryptpad
+
+docker cp /tmp/cryptpad/config.js root-cryptpad-1:/cryptpad/config/config.js
+docker cp /tmp/cryptpad/application_config.js root-cryptpad-1:/cryptpad/customize/application_config.js
+
+rm -rf /tmp/cryptpad

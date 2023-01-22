@@ -1,0 +1,33 @@
+# Default Values:
+cryptpad_disk_space="25"
+gitea_database_disk_space="8"
+gitea_server_disk_space="1"
+nginx_disk_space="1"
+registry_disk_space="25"
+transfer_disk_space="1"
+
+
+# Calculated Values:
+# This section is designed to find the maximum realistic storage sizes that can
+# be allocated to the three disk-hungry containers
+
+reserved="10" # Space reserved for OS and supporting files, in units of 1G
+
+disk_size="$(df -B 1G --output='size' / | tail -n 1 | tr -d '[:space:]')"
+
+docker_space="$((disk_size - reserved))"
+
+# Subtract the images that need minimal space:
+docker_space_remaining="$((docker_space - gitea_server_disk_space - nginx_disk_space - transfer_disk_space))"
+one_fifth_remaining_docker_space="$((docker_space_remaining / 5))"
+if [ "$one_fifth_remaining_docker_space" -gt "1" ]
+then
+    gitea_database_disk_space="$one_fifth_remaining_docker_space"
+    registry_disk_space="$((one_fifth_remaining_docker_space * 2))"
+    cryptpad_disk_space="$((docker_space_remaining - gitea_database_disk_space - registry_disk_space))"
+fi
+
+
+# Write the transfer dockerfile and script:
+mo Dockerfile > /root/transfer/Dockerfile
+mo transfer-script.sh > /root/transfer/transfer-script.sh

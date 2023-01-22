@@ -1,0 +1,48 @@
+mkdir -p /root/backups
+
+if [ -e /var/lib/docker/volumes ]
+then
+    if [ -e "/root/backups/dev.p5.vc_$(date +'%b-%d-%Y').backup" ]
+    then
+        fa_func_log Warning "Warning: Another backup file with today's date was found. Skipping backup..."
+    else
+        backup_directories=""
+        for backup_directory in ""$(ls -1 /var/lib/docker/volumes | tr '\n' ' ')""
+        do backup_directory="$(echo $backup_directory | tr -d '[:space:]')"
+            if [ -z "$backup_directory" ]
+            then
+                continue
+            fi
+
+            exclude_directory="No"
+            for excluded_directory in "${excluded_directories[@]}"
+            do excluded_directory="$(echo $excluded_directory | tr -d '[:space:]')"
+                if [ "$backup_directory" == "$excluded_directory" ]
+                then
+                    exclude_directory="Yes"
+                    break
+                fi
+            done
+
+            if [ "$exclude_directory" == "No" ]
+            then
+                backup_directories="${backup_directories}${backup_directory} "
+            fi
+        done
+
+        if [ -n "$backup_directories" ]
+        then
+            cd /var/lib/docker/volumes
+            tar -czf /root/backups/dev.p5.vc_$(date +'%b-%d-%Y').backup $backup_directories
+        fi
+    fi
+else
+    fa_func_log Error "Error! Backup Failed: No docker volumes were found"
+fi
+
+
+while [ "$(ls -1 /root/backups | wc -l)" -gt "$maximum_backups" ]
+do
+    oldest_backup="$(ls -1tr /root/backups | head -n1)"
+    rm -rf /root/backups/${oldest_backup}
+done

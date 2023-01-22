@@ -1,0 +1,37 @@
+#
+# Mail servers
+#
+
+[postfix]
+enabled = true
+# To use another modes set filter parameter "mode" in jail.local:
+mode    = more
+port    = smtp,465,submission
+logpath = %(postfix_log)s
+backend = %(postfix_backend)s
+
+
+[postfix-rbl]
+enabled = true
+filter   = postfix[mode=rbl]
+port     = smtp,465,submission
+logpath  = %(postfix_log)s
+backend  = %(postfix_backend)s
+maxretry = 1
+
+
+#
+# Mail servers authenticators: might be used for smtp,ftp,imap servers, so
+# all relevant ports get banned
+#
+
+
+[postfix-sasl]
+enabled = true
+filter   = postfix[mode=auth]
+port     = smtp,465,submission,imap,imaps,pop3,pop3s
+# You might consider monitoring /var/log/mail.warn instead if you are
+# running postfix since it would provide the same log lines at the
+# "warn" level but overall at the smaller filesize.
+logpath  = %(postfix_log)s
+backend  = %(postfix_backend)s

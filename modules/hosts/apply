@@ -1,0 +1,6 @@
+mo default > /etc/hosts
+
+if [ -e "${hostname}" ]
+then
+	mo ${hostname} >> /etc/hosts
+fi

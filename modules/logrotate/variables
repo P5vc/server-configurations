@@ -1,0 +1,39 @@
+log_list=()
+
+potential_log_list=("$(find /var/log -type f)")
+specific_rules=("$(ls /etc/logrotate.d)")
+
+# Exceptions (most likely individual entries are provided):
+exceptions=("fetch-apply.log" "alternatives.log" "apt/term.log" "apt/history.log" "btmp" "ufw.log" "wtmp" "syslog" "mail.info" "mail.warn" "mail.err" "mail.log" "daemon.log" "kern.log" "auth.log" "user.log" "lpr.log" "cron.log" "debug" "messages" "ubuntu-advantage.log" "celery" "certbot" "letsencrypt" "dpkg" "fail2ban" "nginx" "rabbitmq" "tor" "unattended-upgrades")
+
+log_list_counter=0
+for log_file in ${potential_log_list[@]}
+do
+	match_found="No"
+	for rule in ${specific_rules[@]}
+	do
+		if [ -n "$(echo $log_file | grep $rule)" ]
+		then
+			match_found="Yes"
+			break
+		fi
+	done
+
+	if [ $match_found == "No" ]
+	then
+		for rule in ${exceptions[@]}
+		do
+			if [ -n "$(echo $log_file | grep $rule)" ]
+			then
+				match_found="Yes"
+				break
+			fi
+		done
+	fi
+
+	if [ $match_found == "No" ]
+	then
+		log_list[$log_list_counter]="$log_file"
+		log_list_counter=$((log_list_counter+=1))
+	fi
+done

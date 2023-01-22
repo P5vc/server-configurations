@@ -1,0 +1,9 @@
+fail2ban
+hosts
+motd
+network-configuration
+nftables
+resolved
+sshd
+unattended-upgrades
+logrotate

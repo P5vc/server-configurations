@@ -1,0 +1,119 @@
+fa_func_log Info "Restore a Docker Backup..."
+
+echo "
+This module allows you to restore this server from an automated docker backup.
+
+Please Note:
+  - This module is designed to be run ad hoc after Fetch Apply initially configures
+    a server, or in the case of data loss necessitating restoration from a backup.
+  - This module should never be run continuously or automatically.
+  - This module can only restore from automated backups created by its counterpart
+    module ('docker-backup') on a server with the same filesystem.
+  - Running this module will stop all docker containers, disrupting service
+  - Running this module will overwrite all current data, including transfer data
+    and volume data. In other words: YOU WILL LOSE ALL CURRENT DATA IN YOUR
+    DOCKER CONTAINERS!
+"
+
+echo "Do you acknowledge that you understand the above notices, and still wish to proceed? (Y/n) "
+read proceed
+if [ -z "$proceed" ] || [ "$proceed" == "Y" ] || [ "$proceed" == "y" ]
+then
+    su nonroot -c "mkdir -p /tmp/docker-restore"
+
+    echo ""
+    echo "Please copy (via 'scp', for example) the backup file that you would like"
+    echo "to restore from, to the following directory:"
+    echo ""
+    echo "    /tmp/docker-restore"
+    echo ""
+    echo "Note: only copy the desired backup file to this directory and nothing else,"
+    echo "or the backup restoration may fail."
+    echo ""
+    echo "When you are done, press enter."
+    read enter_pressed
+
+    backup_file="$(ls -1 /tmp/docker-restore/ | head -n1)"
+    if [ -n "$backup_file" ]
+    then
+        fa_func_log Info "Beginning restoration from backup file: ${backup_file}"
+        cd /tmp/docker-restore
+        tar -xzf $backup_file
+        rm -rf $backup_file
+
+        cd /root
+
+        fa_func_log Info "Stopping docker containers..."
+        docker compose down --timeout 5
+
+        fa_func_log Warning "WARNING!\n\nABOUT TO START **DELETING** CURRENT DOCKER NAMED VOLUMES AND ALL FILES LOCATED WITHIN:\n\n\t/root/transfer/\n\nThis is your last chance to cancel.\n\nPress Ctrl+C now to interrupt/terminate this process.\n\nPress Enter if you are sure that you would like to continue."
+        read enter_pressed
+
+        fa_func_log Info "Deleting all transfer data files (but leaving created directories intact)..."
+        find /root/transfer/ -type f -delete
+
+        fa_func_log Info "Deleting current docker volume directories that will be restored from backup..."
+        directories_to_restore=""
+        for restore_directory in ""$(ls -1 /tmp/docker-restore | tr '\n' ' ')""
+        do restore_directory="$(echo $restore_directory | tr -d '[:space:]')"
+            if [ -z "$restore_directory" ]
+            then
+                continue
+            fi
+
+            directories_to_restore="${directories_to_restore}${restore_directory} "
+        done
+
+        for current_directory in ""$(ls -1 /var/lib/docker/volumes | tr '\n' ' ')""
+        do current_directory="$(echo $current_directory | tr -d '[:space:]')"
+            if [ -z "$current_directory" ]
+            then
+                continue
+            fi
+
+            directory_to_be_restored="No"
+            for restore_directory in $directories_to_restore
+            do
+                if [ "$restore_directory" == "$current_directory" ]
+                then
+                    directory_to_be_restored="Yes"
+                    break
+                fi
+            done
+
+            if [ "$directory_to_be_restored" == "Yes" ]
+            then
+                rm -rf /var/lib/docker/volumes/${current_directory}
+            fi
+        done
+
+        fa_func_log Info "Restoring docker volumes from backup..."
+        mv /tmp/docker-restore/* /var/lib/docker/volumes/
+        fa_func_log Success "Successfully restored docker volumes from backup!"
+        rm -rf /tmp/docker-restore
+
+        fa_func_log Info "Starting docker containers..."
+        docker compose up -d
+        fa_func_log Info "Pausing to give the docker containers time to start up..."
+        echo ""
+        echo "WHILE YOU WAIT FOR THE DOCKER CONTAINERS TO START UP, PLEASE KEEP IN MIND"
+        echo "that all temporary (such as 'transfer') data has been deleted. This data"
+        echo "may include TLS certificates, configuration files, secure tokens, and"
+        echo "more. It is likely that you will need to run Fetch Apply ('fa') manually"
+        echo "after this module finishes running, and perhaps even reboot the server,"
+        echo "in order to regenerate all of those necessary temporary files."
+        echo ""
+        for i in {15..1..-1}
+        do
+            echo -n "${i}... "
+            sleep 1
+        done
+        echo "0"
+
+        fa_func_log Success "Successfully restored docker volumes from backup!"
+    else
+        fa_func_log Warning "No backup file detected. Please run this module again to try again."
+    fi
+else
+    fa_func_log Success "Successfully canceled restoration from a docker backup!"
+fi

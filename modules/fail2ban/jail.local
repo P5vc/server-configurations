@@ -1,0 +1,94 @@
+[DEFAULT]
+
+# "bantime.overalljails" (if true) specifies the search of IP in the database will be executed
+# cross over all jails, if false (default), only current jail of the ban IP will be searched]
+bantime.overalljails = true
+
+# "bantime" is the number of seconds that a host is banned.
+bantime  = 30m
+
+# A host is banned if it has generated "maxretry" during the last "findtime"
+# seconds.
+findtime  = 15m
+
+# "maxretry" is the number of failures before a host get banned.
+maxretry = 4
+
+# "usedns" specifies if jails should trust hostnames in logs,
+#   warn when DNS lookups are performed, or ignore all hostnames in logs
+#
+# yes:   if a hostname is encountered, a DNS lookup will be performed.
+# warn:  if a hostname is encountered, a DNS lookup will be performed,
+#        but it will be logged as a warning.
+# no:    if a hostname is encountered, will not be used for banning,
+#        but it will be logged as info.
+# raw:   use raw value (no hostname), allow use it for no-host filters/actions (example user)
+usedns = warn
+
+# Ports to be banned
+# Usually should be overridden in a particular jail
+port = 0:65535
+
+# Format of user-agent https://tools.ietf.org/html/rfc7231#section-5.5.3
+fail2ban_agent = Fail2Ban/%(fail2ban_version)s
+
+#
+# Action shortcuts. To be used to define action parameter
+
+# Default banning action (e.g. iptables, iptables-new,
+# iptables-multiport, shorewall, etc) It is used to define
+# action_* variables. Can be overridden globally or per
+# section within jail.local file
+banaction = nftables[type=allports]
+banaction_allports = nftables[type=allports]
+
+
+#
+# JAILS
+#
+
+
+#
+# SSH servers
+#
+
+[sshd]
+enabled = true
+# To use more aggressive sshd modes set filter parameter "mode" in jail.local:
+# normal (default), ddos, extra or aggressive (combines all).
+# See "tests/files/logs/sshd" or "filter.d/sshd.conf" for usage example and details.
+mode   = aggressive
+port   = {{ ssh_port }}
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s
+
+
+#
+# Miscellaneous
+#
+
+
+# Jail for more extended banning of persistent abusers
+# !!! WARNINGS !!!
+# 1. Make sure that your loglevel specified in fail2ban.conf/.local
+#    is not at DEBUG level -- which might then cause fail2ban to fall into
+#    an infinite loop constantly feeding itself with non-informative lines
+# 2. Increase dbpurgeage defined in fail2ban.conf to e.g. 648000 (7.5 days)
+#    to maintain entries for failed logins for sufficient amount of time
+[recidive]
+enabled = true
+logpath  = /var/log/fail2ban.log
+banaction = %(banaction_allports)s
+bantime  = 1w
+findtime = 1d
+
+
+# Generic filter for PAM. Has to be used with action which bans all
+# ports such as iptables-allports, shorewall
+
+[pam-generic]
+# pam-generic filter can be customized to monitor specific subset of 'tty's
+enabled = true
+banaction = %(banaction_allports)s
+logpath  = %(syslog_authpriv)s
+backend  = %(syslog_backend)s

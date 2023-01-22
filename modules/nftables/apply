@@ -1,0 +1,33 @@
+if [ -e "${hostname}" ]
+then
+    mo $hostname > /etc/nftables.conf
+else
+    mo default > /etc/nftables.conf
+fi
+
+# Preserve any tables added by Docker, if they exist and docker is running, before flushing ruleset:
+if [ "$(docker ps | wc -l)" -gt "1" ]
+then
+    for table in ""$(nft list tables | tr ' ' '-' | tr '\n' ' ')""
+    do table="$(echo $table | tr -d '[:space:]')"
+        if [ -z "$table" ]
+        then
+            continue
+        fi
+        table="$(echo $table | tr '-' ' ')"
+
+        if [ -n "$(nft list $(echo $table | tr '-' ' ') | grep 'chain DOCKER')" ]
+        then
+            nft list $(echo $table | tr '-' ' ') >> /etc/nftables.conf
+        fi
+    done
+fi
+
+nft flush ruleset
+nft -f /etc/nftables.conf
+
+# Allow docker to rewrite its base rules, after they were flushed:
+if [ "$(docker ps | wc -l)" -le "1" ]
+then
+    systemctl restart docker
+fi

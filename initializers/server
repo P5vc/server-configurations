@@ -1,0 +1,114 @@
+fa_func_log Info "Setting Server Timezone..."
+
+while true
+do
+    echo "Please enter the timezone you would like to set for this server, or enter 'list',
+to see a list of all available timezones (which you may exit by pressing 'q').
+Timezone (America/New_York): "
+    read entered_timezone
+    if [ "$entered_timezone" == "list" ] || [ "$entered_timezone" == "List" ] || [ "$entered_timezone" == "LIST" ]
+    then
+        timedatectl list-timezones
+    else
+        if [ -z "$entered_timezone" ]
+        then
+            entered_timezone="America/New_York"
+        fi
+
+        timedatectl set-timezone $entered_timezone
+
+        break
+    fi
+done
+
+
+fa_func_log Info "Creating user 'nonroot'..."
+
+useradd -s /bin/bash -d /home/nonroot -m -p "" nonroot
+
+echo "
+Please set the nonroot user's password to a fully randomized string (generated
+via a CSPRNG) of at least 24 characters in length. Make sure to save this
+password in a secure location. This is the user that you will use from now on to
+manage this server.
+"
+
+passwd nonroot
+
+fa_func_log Info "Adding user 'nonroot' to the 'sudo' group..."
+
+usermod -aG sudo nonroot
+
+
+echo "
+The root password must be reset.
+
+Set the password to a fully randomized string (generated via a CSPRNG) of at
+least 50 characters in length. It is highly recommended that you do NOT save
+this password. All future administrative activities should be done from the
+newly-created 'nonroot' account.
+"
+
+passwd
+
+
+fa_func_log Info "Upgrading all packages..."
+
+apt-get clean
+apt-get update
+apt-get upgrade -y
+apt-get autoclean && apt-get autoremove --purge -y
+
+fa_func_log Info "Installing basic, administrative packages..."
+
+apt-get install -y \
+curl \
+git \
+nano \
+nftables \
+python3-pip \
+python3-setuptools \
+secure-delete \
+unattended-upgrades \
+vnstat \
+wget
+
+
+fa_func_log Info "Installing the latest version of fail2ban..."
+
+# Installation Instructions: https://github.com/fail2ban/fail2ban/wiki/How-to-install-or-upgrade-fail2ban-manually
+
+echo "
+Please enter the download URL for the latest release of fail2ban.
+
+The latest releases can be found here:
+https://github.com/fail2ban/fail2ban/releases
+
+Make sure to provide the URL to the Debian upstream-package file (it will end in
+'.deb'), like this example URL:
+https://github.com/fail2ban/fail2ban/releases/download/1.0.2/fail2ban_1.0.2-1.upstream1_all.deb
+
+Download URL: "
+read fail2ban_download_url </dev/tty
+
+wget -O /tmp/fail2ban.deb $fail2ban_download_url
+dpkg -i /tmp/fail2ban.deb
+rm -f /tmp/fail2ban.deb
+
+
+fa_func_log Info "Setting up SSH keys..."
+
+echo "Please paste then write out the SSH public key of the unique, securely-
+generated, and securely-stored SSH keypair that you would like to use to log in
+to this server as the user 'nonroot'.
+
+Press enter when you are ready to paste the public key."
+read enter_pressed
+
+mkdir /home/nonroot/.ssh
+nano /home/nonroot/.ssh/authorized_keys
+
+
+fa_func_log Info "Enabling nftables..."
+
+systemctl enable --now nftables

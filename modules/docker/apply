@@ -1,0 +1,34 @@
+if [ -e "${hostname}/commands" ]
+then
+    cd $hostname
+    source ./commands
+    cd ..
+fi
+
+if [ -e "${hostname}/docker-compose.yml" ]
+then
+    mo ${hostname}/docker-compose.yml > /tmp/docker-compose.yml
+    if [ ! -e /root/docker-compose.yml ] || [ -n "$(diff /tmp/docker-compose.yml /root/docker-compose.yml)" ]
+    then
+        fa_func_log Info "New docker compose file detected. Restarting docker containers..."
+        mv /tmp/docker-compose.yml /root/docker-compose.yml
+        cd /root
+        docker compose down
+    else
+        rm -f /tmp/docker-compose.yml
+    fi
+fi
+
+cd /root
+
+if [ "$(docker ps | wc -l)" -le "1" ]
+then
+    docker compose build
+    docker compose up -d
+    fa_func_log Info "Pausing to give the docker containers time to start..."
+    for i in {15..0..-1}
+    do
+        echo "${i}..."
+        sleep 1
+    done
+fi

@@ -1,0 +1,30 @@
+#
+#
+# DNS servers
+#
+
+
+# !!! WARNING !!!
+#   Since UDP is connection-less protocol, spoofing of IP and imitation
+#   of illegal actions is way too simple.  Thus enabling of this filter
+#   might provide an easy way for implementing a DoS against a chosen
+#   victim. See
+#    http://nion.modprobe.de/blog/archives/690-fail2ban-+-dns-fail.html
+#   Please DO NOT USE this jail unless you know what you are doing.
+#
+# IMPORTANT: see filter.d/named-refused for instructions to enable logging
+# This jail blocks UDP traffic for DNS requests.
+# [named-refused-udp]
+#
+# filter   = named-refused
+# port     = domain,953
+# protocol = udp
+# logpath  = /var/log/named/security.log
+
+# IMPORTANT: see filter.d/named-refused for instructions to enable logging
+# This jail blocks TCP traffic for DNS requests.
+
+[named-refused]
+enabled = true
+port     = domain,953
+logpath  = /var/log/named/security.log

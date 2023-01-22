@@ -1,0 +1,6 @@
+if [ ! -e "/root/transfer/cryptpad/salt" ]
+then
+    openssl rand -base64 48 > /root/transfer/cryptpad/salt
+fi
+
+cryptpad_salt="$(cat /root/transfer/cryptpad/salt)"

@@ -1,0 +1,6 @@
+if [ -e "${hostname}/commands" ]
+then
+	cd $hostname
+	source ./commands
+	cd ..
+fi

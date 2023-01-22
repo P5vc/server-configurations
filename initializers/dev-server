@@ -1,0 +1,158 @@
+fa_func_log Info "Installing Docker Engine..."
+# Installation instructions: https://docs.docker.com/engine/install/ubuntu/
+
+# Install dependencies:
+apt-get update
+apt-get install -y ca-certificates gnupg lsb-release
+
+# Add Docker's official GPG key:
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+| gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# Set up the Docker repository:
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+| tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install the latest version of Docker Engine, containerd, and Docker Compose:
+apt-get update
+apt-get install -y containerd.io docker-ce docker-ce-cli docker-compose-plugin
+
+
+fa_func_log Info "Preparing System for 'Transfer' Docker Container..."
+
+mkdir -p /root/transfer
+
+
+fa_func_log Info "Preparing System for 'Gitea' Docker Container..."
+# Installation and deployment steps: https://docs.gitea.io/en-us/install-with-docker/
+
+mkdir -p /root/transfer/gitea-data/gitea/conf
+mkdir -p /root/transfer/gitea-data/gitea/public/img
+mkdir -p /root/transfer/gitea-data/gitea/templates/base
+
+groupadd -g 1050 git
+useradd -s /bin/bash -d /home/git -u 1050 -g 1050 -m -p "" git
+
+echo "
+Please set the git user's password to a fully randomized string (generated
+via a CSPRNG) of at least 24 characters in length. Make sure to save this
+password in a secure location. This is the user that will be used for the
+Gitea SSHing shim.
+"
+
+passwd git
+
+mkdir /home/git/.ssh
+touch /home/git/.ssh/authorized_keys
+chown -R git:git /home/git/.ssh
+chmod 600 /home/git/.ssh/authorized_keys
+
+su git -c "yes '' | ssh-keygen -t ed25519 -C 'Gitea Host Key'"
+
+echo "# SSH public key for git user:" >> /home/git/.ssh/authorized_keys
+cat /home/git/.ssh/id_ed25519.pub >> /home/git/.ssh/authorized_keys
+
+cat <<"EOF" | tee /usr/local/bin/gitea
+#!/bin/sh
+ssh -p 2222 -o StrictHostKeyChecking=no git@127.0.0.1 "SSH_ORIGINAL_COMMAND=\"$SSH_ORIGINAL_COMMAND\" $0 $@"
+EOF
+sudo chmod +x /usr/local/bin/gitea
+
+
+fa_func_log Info "Preparing System for 'nginx' Docker Container..."
+
+mkdir -p /root/transfer/nginx-acme
+mkdir -p /root/transfer/nginx-configs
+mkdir -p /root/transfer/nginx-dhparam
+
+
+fa_func_log Info "Preparing System for 'Registry' Docker Container..."
+# Installation and deployment steps: https://docs.docker.com/registry/deploying/
+
+# Install any necessary dependencies:
+apt-get install -y apache2-utils
+
+mkdir -p /root/transfer/registry/auth
+mkdir -p /root/transfer/registry/certs
+
+first_iteration="true"
+while true
+do
+    if [ "$first_iteration" == "true" ]
+    then
+        echo "Would you like to create an account that can access the Docker Registry? (Y/n) "
+        first_iteration="false"
+    else
+        echo "Would you like to create another account that can access the Docker Registry? (Y/n) "
+    fi
+    read create_account
+
+    if [ -z "$create_account" ] || [ "$create_account" == "Y" ] || [ "$create_account" == "y" ]
+    then
+        echo "Please enter the desired username: "
+        read account_username
+
+        while true
+        do
+            echo "Please enter the desired password: "
+            read -s account_password
+
+            echo "Please enter the desired password again: "
+            read -s account_password_again
+
+            if [ "$account_password" == "$account_password_again" ]
+            then
+                break
+            else
+                echo "Passwords do not match. Try again:"
+            fi
+        done
+
+        htpasswd -Bbn $account_username $account_password >> /root/transfer/registry/auth/htpasswd
+
+        echo "User has been added!"
+    else
+        break
+    fi
+done
+
+
+fa_func_log Info "Preparing System for 'Cryptpad' Docker Container..."
+# Source Repository: https://docs.docker.com/registry/deploying/
+# Configuration Information: https://docs.cryptpad.org/en/admin_guide/installation.html#configure-cryptpad
+
+mkdir -p /root/transfer/cryptpad
+
+
+fa_func_log Info "Adding Let's Encrypt Support..."
+# Instructions: https://certbot.eff.org/instructions?ws=other&os=ubuntufocal
+
+# Install any necessary dependencies:
+apt-get install -y snapd
+
+snap install core
+snap refresh core
+
+snap install --classic certbot
+ln -s /snap/bin/certbot /usr/bin/certbot
+
+mkdir -p /etc/letsencrypt
+
+echo "
+After system configuration completes, you will need to reboot the server and then
+run the 'lets-encrypt' module ad hoc, in order to acquire a Let's Encrypt certificate.
+
+Press enter to acknowledge that you have read and will follow the above instructions.
+"
+read enter_pressed
+
+
+echo "
+After system configuration completes, you will need to reboot the server and then
+run the 'docker-restore' module ad hoc, if you would like to restore the data on
+this development server instance from a previous backup.
+
+Press enter to acknowledge that you have read and understand the above instructions.
+"
+read enter_pressed

@@ -1,0 +1,72 @@
+fa_func_log Info "Acquire a Let's Encrypt Certificate..."
+
+echo "
+This module will acquire an initial Let's Encrypt certificate to be used with an
+nginx docker container, and as part of the process, certbot will automatically
+schedule tasks to handle its periodic renewal.
+
+Please note: this module is designed to be run ad hoc after Fetch Apply initially
+configures a server and it has been rebooted. This module should only ever need
+to be run once on a server, and should not be run continuously or automatically.
+Running this module will modify and restart the nginx docker container multiple
+times, disrupting network traffic.
+"
+
+echo "Do you acknowledge that you understand the above warning, and wish to proceed? (Y/n) "
+read proceed
+if [ -z "$proceed" ] || [ "$proceed" == "Y" ] || [ "$proceed" == "y" ]
+then
+    if [ -n "${certificate_domains-}" ]
+    then
+        echo "We have automatically detected a list of domains that you may wish to request"
+        echo "certificates for. If the list below looks accurate to you, you should copy it"
+        echo "to your clipboard before proceeding, so that you can paste it when prompted:"
+        echo ""
+        echo "${certificate_domains}"
+    fi
+
+    echo ""
+    echo "Press enter when you are ready to restart nginx and answer the Let's Encrypt prompts..."
+    read enter_pressed
+
+    fa_func_log Info "Stopping docker containers..."
+    current_directory="$(pwd)"
+    cd /root
+    docker compose down --timeout 5
+
+    fa_func_log Info "Verifying the existence of the nginx acme challenge directory..."
+    if [ -e /root/transfer/nginx-acme ]
+    then
+        fa_func_log Info "Deleting and replacing the current nginx configurations..."
+        rm -rf /root/transfer/nginx-configs/*
+
+        cd $current_directory
+        mo Certbot.conf > /root/transfer/nginx-configs/Certbot.conf
+        cd /root
+
+        fa_func_log Info "Starting docker containers..."
+        docker compose up -d
+        sleep 5
+
+        fa_func_log Info "Acquiring Let's Encrypt certificate..."
+        certbot certonly --webroot -w /root/transfer/nginx-acme
+
+        fa_func_log Info "Deleting the temporary nginx configuration..."
+        docker compose down --timeout 0
+        rm -rf /root/transfer/nginx-configs/*
+        docker compose up -d
+
+        cd $current_directory
+
+        echo "The nginx module will need to be rerun, in order to restore the correct,"
+        echo "production configurations. You can do this now, ad hoc (with 'fa run nginx'),"
+        echo "or wait until Fetch Apply's next scheduled run."
+        echo ""
+        echo "Press enter to acknowledge that you have read the above notice."
+        read enter_pressed
+
+        fa_func_log Success "Finished acquiring Let's Encrypt certificate..."
+    else
+        fa_func_log Error "Error! The required acme challenge directory could not be found in the default location."
+    fi
+fi

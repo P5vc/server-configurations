@@ -1,0 +1,30 @@
+if [ -e "/root/transfer/nginx-configs/Cryptpad.conf" ] && [ -e "/root/transfer/nginx-configs/Gitea.conf" ] && [ -e "/root/transfer/nginx-configs/Registry.conf" ]
+then
+    mkdir -p /tmp/nginx-configs
+    mo Cryptpad.conf > /tmp/nginx-configs/Cryptpad.conf
+    mo Gitea.conf > /tmp/nginx-configs/Gitea.conf
+    mo Registry.conf > /tmp/nginx-configs/Registry.conf
+
+    # If any of the configurations have been modified, overwrite the older versions then restart the nginx docker container:
+    if [ -n "$(diff /tmp/nginx-configs/Cryptpad.conf /root/transfer/nginx-configs/Cryptpad.conf)" ] || [ -n "$(diff /tmp/nginx-configs/Gitea.conf /root/transfer/nginx-configs/Gitea.conf)" ] || [ -n "$(diff /tmp/nginx-configs/Registry.conf /root/transfer/nginx-configs/Registry.conf)" ]
+    then
+        mo Cryptpad.conf > /root/transfer/nginx-configs/Cryptpad.conf
+        mo Gitea.conf > /root/transfer/nginx-configs/Gitea.conf
+        mo Registry.conf > /root/transfer/nginx-configs/Registry.conf
+
+        docker restart root-nginx-1
+    fi
+
+    rm -rf /tmp/nginx-configs
+else
+    mo Cryptpad.conf > /root/transfer/nginx-configs/Cryptpad.conf
+    mo Gitea.conf > /root/transfer/nginx-configs/Gitea.conf
+    mo Registry.conf > /root/transfer/nginx-configs/Registry.conf
+
+    docker restart root-nginx-1
+fi
+
+if [ ! -e /root/transfer/nginx-dhparam/dhparam.pem ] || [ -z "$(cat /root/transfer/nginx-dhparam/dhparam.pem)" ]
+then
+	openssl dhparam -out /root/transfer/nginx-dhparam/dhparam.pem 4096
+fi

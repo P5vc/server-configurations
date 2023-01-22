@@ -1,0 +1,7 @@
+hostname="$(hostname)"
+short_hostname="$(hostname -s)"
+
+primary_domain="priveasy.org"
+secondary_domain="p5.vc"
+
+ssh_port=58763

@@ -1,0 +1,45 @@
+# If the needed Gitea secrets aren't found or the files are empty, regenerate them:
+
+if [ ! -e /root/transfer/gitea-data/secret_key ] || [ -z "$(cat /root/transfer/gitea-data/secret_key)" ]
+then
+	gitea_image="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep 'gitea/gitea')"
+	docker run --rm $gitea_image gitea generate secret SECRET_KEY > /root/transfer/gitea-data/secret_key
+fi
+
+if [ ! -e /root/transfer/gitea-data/internal_token ] || [ -z "$(cat /root/transfer/gitea-data/internal_token)" ]
+then
+	gitea_image="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep 'gitea/gitea')"
+	docker run --rm $gitea_image gitea generate secret INTERNAL_TOKEN > /root/transfer/gitea-data/internal_token
+fi
+
+if [ ! -e /root/transfer/gitea-data/cert.pem ] || [ -z "$(cat /root/transfer/gitea-data/cert.pem)" ]
+then
+	docker restart root-gitea-server-1
+	sleep 15
+    docker exec -it -w /data root-gitea-server-1 gitea cert --host gitea-server || true
+	docker exec -it -w /data root-gitea-server-1 chown git:git cert.pem || true
+	docker exec -it -w /data root-gitea-server-1 chown git:git key.pem || true
+fi
+
+
+# Gitea Customizations
+
+# Note: the customized files should be periodically checked against the original
+# source files, as they will need to be manually updated when the source files
+# change. The source URL will be included for each file.
+
+# https://github.com/go-gitea/gitea/blob/main/custom/conf/app.example.ini
+# https://docs.gitea.io/en-us/config-cheat-sheet/
+mo app.ini > /root/transfer/gitea-data/gitea/conf/app.ini
+
+# https://github.com/go-gitea/gitea/blob/main/templates/home.tmpl
+cat home.tmpl > /root/transfer/gitea-data/gitea/templates/home.tmpl
+
+# https://github.com/go-gitea/gitea/blob/main/templates/base/footer_content.tmpl
+cat footer_content.tmpl > /root/transfer/gitea-data/gitea/templates/base/footer_content.tmpl
+
+# https://docs.gitea.io/en-us/customizing-gitea/#changing-the-logo
+rm -rf /root/transfer/gitea-data/gitea/public/img/*
+cp img/* /root/transfer/gitea-data/gitea/public/img/
+
+chown -R git:git /root/transfer/gitea-data

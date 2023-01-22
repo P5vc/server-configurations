@@ -1,0 +1,19 @@
+network_interface='ens18'
+network_interface_mac_address='00:50:56:48:42:3f'
+
+ipv4_address='207.244.238.225'
+ipv6_address='2605:a140:2104:2960:0000:0000:0000:0001'
+
+ipv4_address_cidr='207.244.238.225/20'
+ipv6_address_cidr='2605:a140:2104:2960:0000:0000:0000:0001/64'
+
+ipv4_gateway='207.244.224.1'
+ipv6_gateway='fe80::1'
+
+ipv4_dns_server_primary='1.1.1.1'
+ipv4_dns_server_secondary='1.0.0.1'
+ipv6_dns_server_primary='2606:4700:4700::1111'
+ipv6_dns_server_secondary='2606:4700:4700::1001'
+
+hostnames=(${hostname} source.${primary_domain} cryptpad.${secondary_domain} cryptpad.${primary_domain} registry.${secondary_domain} ${short_hostname})
+certificate_domains="${hostname} source.${primary_domain} cryptpad.${secondary_domain} cryptpad.${primary_domain} registry.${secondary_domain}"

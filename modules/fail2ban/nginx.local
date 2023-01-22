@@ -1,0 +1,32 @@
+#
+# HTTP servers
+#
+
+
+# To use more aggressive http-auth modes set filter parameter "mode" in jail.local:
+# normal (default), aggressive (combines all), auth or fallback
+# See "tests/files/logs/nginx-http-auth" or "filter.d/nginx-http-auth.conf" for usage example and details.
+[nginx-http-auth]
+enabled = true
+mode = normal
+port    = http,https
+logpath = %(nginx_error_log)s
+
+[nginx-botsearch]
+enabled = true
+port     = http,https
+logpath  = %(nginx_error_log)s
+
+[nginx-bad-request]
+enabled = true
+port    = http,https
+logpath = %(nginx_access_log)s
+
+# Ban attackers that try to use PHP's URL-fopen() functionality
+# through GET/POST variables. - Experimental, with more than a year
+# of usage in production environments.
+
+[php-url-fopen]
+enabled = true
+port    = http,https
+logpath = %(nginx_access_log)s

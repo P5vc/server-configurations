@@ -1,0 +1,67 @@
+mkdir -p /etc/systemd/system/timers.target.wants
+
+# Base configurations:
+mo logrotate.conf > /etc/logrotate.conf
+mo logrotate.timer > /etc/systemd/system/timers.target.wants/logrotate.timer
+mo logrotate.timer > /lib/systemd/system/logrotate.timer
+mo logrotate.service > /lib/systemd/system/logrotate.service
+
+# Specialized configurations:
+mo alternatives > /etc/logrotate.d/alternatives
+mo btmp > /etc/logrotate.d/btmp
+mo rsyslog > /etc/logrotate.d/rsyslog
+mo ubuntu-advantage-tools > /etc/logrotate.d/ubuntu-advantage-tools
+mo wtmp > /etc/logrotate.d/wtmp
+
+if [ -n "$(which ufw)" ]
+then
+	mo ufw > /etc/logrotate.d/ufw
+fi
+
+if [ -n "$(which apt)" ]
+then
+	mo apt > /etc/logrotate.d/apt
+fi
+
+if [ -n "$(which certbot)" ]
+then
+	mo certbot > /etc/logrotate.d/certbot
+fi
+
+if [ -e "/var/log/celery" ]
+then
+	mo celery > /etc/logrotate.d/celery
+fi
+
+if [ -n "$(which dpkg)" ]
+then
+	mo dpkg > /etc/logrotate.d/dpkg
+fi
+
+if [ -n "$(which fail2ban-server)" ]
+then
+	mo fail2ban > /etc/logrotate.d/fail2ban
+fi
+
+if [ -e "/var/log/nginx" ]
+then
+	mo nginx > /etc/logrotate.d/nginx
+fi
+
+if [ -e "/var/log/rabbitmq" ]
+then
+	mo rabbitmq-server > /etc/logrotate.d/rabbitmq-server
+fi
+
+if [ -e "/var/log/tor" ]
+then
+	mo tor > /etc/logrotate.d/tor
+fi
+
+if [ -n "$(which unattended-upgrades)" ]
+then
+	mo unattended-upgrades > /etc/logrotate.d/unattended-upgrades
+fi
+
+
+systemctl daemon-reload

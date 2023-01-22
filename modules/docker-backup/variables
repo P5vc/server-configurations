@@ -1,0 +1,10 @@
+# Maximum number of backup files to retain:
+maximum_backups="10"
+
+# Volume file and directories to exclude from the backup:
+excluded_directories=(backingFsBlockDev metadata.db)
+
+if [ "$hostname" == "dev.p5.vc" ]
+then
+    excluded_directories=(backingFsBlockDev metadata.db root_cryptpad-config root_cryptpad-customize root_cryptpad-customize-dist root_cryptpad-www)
+fi

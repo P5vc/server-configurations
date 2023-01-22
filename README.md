@@ -2,7 +2,7 @@
 
 ##### Priveasy's Official "Infrastructure as Code" Repository
 
-This is the [Fetch Apply](https://git.p5.vc/Priveasy/fetch-apply "Fetch Apply") "operations" repository used by Priveasy set up, configure, and maintain all of its servers. This repository is public and open source, enabling maximum transparency and auditability, while spurring collaboration.
+This is the [Fetch Apply](https://source.priveasy.org/Priveasy/fetch-apply "Fetch Apply") "operations" repository used by Priveasy set up, configure, and maintain all of its servers. This repository is public and open source, enabling maximum transparency and auditability, while spurring collaboration.
 
 ------------
 

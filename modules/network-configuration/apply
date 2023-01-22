@@ -1,0 +1,9 @@
+mo sysctl.conf > /etc/sysctl.conf
+sysctl -q -p
+
+echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6
+
+rm -rf /etc/netplan/*
+mo network-configuration.yaml > /etc/netplan/network-configuration.yaml
+netplan generate
+netplan apply

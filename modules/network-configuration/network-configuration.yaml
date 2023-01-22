@@ -1,0 +1,23 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    {{ network_interface }}:
+      match:
+        macaddress: {{ network_interface_mac_address }}
+      addresses:
+        - {{ ipv4_address_cidr }}
+        - {{ ipv6_address_cidr }}
+      routes:
+        - to: 0.0.0.0/0
+          via: {{ ipv4_gateway }}
+          on-link: true
+        - to: ::/0
+          via: {{ ipv6_gateway }}
+          on-link: true
+      nameservers:
+        addresses:
+          - {{ ipv4_dns_server_primary }}
+          - {{ ipv4_dns_server_secondary }}
+          - {{ ipv6_dns_server_primary }}
+          - {{ ipv6_dns_server_secondary }}

@@ -1,0 +1,4 @@
+if [ ! -e /root/transfer/registry/certs/registry.crt ] || [ -z "$(cat /root/transfer/registry/certs/registry.crt)" ]
+then
+    yes "" | openssl req -newkey rsa:4096 -nodes -sha256 -keyout /root/transfer/registry/certs/registry.key -addext "subjectAltName = DNS:registry" -x509 -days 365 -out /root/transfer/registry/certs/registry.crt || true
+fi
