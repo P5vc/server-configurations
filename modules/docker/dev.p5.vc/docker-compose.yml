@@ -6,6 +6,7 @@ networks:
   registry-net:
     external: false
 
+
 volumes:
   cryptpad-blob:
   cryptpad-block:
@@ -19,6 +20,7 @@ volumes:
   gitea-db:
   registry-auth:
   registry-storage:
+
 
 services:
   cryptpad:
@@ -53,6 +55,7 @@ services:
     storage_opt:
       size: '{{ cryptpad_disk_space }}G'
     restart: always
+
   gitea-database:
     image: postgres:15.1
     environment:
@@ -68,6 +71,7 @@ services:
     storage_opt:
       size: '{{ gitea_database_disk_space }}G'
     restart: always
+
   gitea-server:
     image: gitea/gitea:1.18
     ports:
@@ -102,6 +106,7 @@ services:
     depends_on:
       - gitea-database
     restart: always
+
   nginx:
     image: nginx:1.23
     ports:
@@ -119,6 +124,10 @@ services:
       - type: volume
         source: cryptpad-block
         target: /cryptpad/block
+        read_only: true
+      - type: volume
+        source: cryptpad-customize
+        target: /cryptpad/customize
         read_only: true
       - type: volume
         source: cryptpad-customize-dist
@@ -151,6 +160,7 @@ services:
       - gitea-server
       - registry
     restart: always
+
   registry:
     image: registry:2.8
     environment:
@@ -177,6 +187,7 @@ services:
     storage_opt:
       size: '{{ registry_disk_space }}G'
     restart: always
+
   transfer:
     build:
       context: /root/transfer

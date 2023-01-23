@@ -13,9 +13,9 @@ then
     cp /transfer/destinations/gitea-data/cert.pem /transfer/sources/gitea-data/cert.pem
 fi
 
-if [ ! -e /transfer/sources/cryptpad/salt ] && [ -e /transfer/destinations/cryptpad/salt ]
+if [ ! -e /transfer/sources/cryptpad/public_salt ] && [ -e /transfer/destinations/cryptpad/public_salt ]
 then
-    cp /transfer/destinations/cryptpad/salt /transfer/sources/cryptpad/salt
+    cp /transfer/destinations/cryptpad/public_salt /transfer/sources/cryptpad/public_salt
 fi
 
 if [ ! -e /transfer/sources/registry-auth/htpasswd ] && [ -e /transfer/destinations/registry-auth/htpasswd ]
@@ -27,7 +27,7 @@ while true
 do
     rsync -p -r /transfer/sources/gitea-data/ /transfer/destinations/gitea-data/
     rsync -p -r /transfer/sources/registry-auth/ /transfer/destinations/registry-auth/
-    rsync -p /transfer/sources/cryptpad/ /transfer/destinations/cryptpad/
+    rsync -p -r /transfer/sources/cryptpad/ /transfer/destinations/cryptpad/
 
     sleep 60
 done

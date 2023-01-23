@@ -117,7 +117,7 @@ module.exports = {
      *
      */
     adminKeys: [
-        "[admin@cryptpad.priveasy.org/htNGHoFYAuqIHIMEVlO5ZjNeJRMCQ0N9cDFNYaAPzFs=]",
+        "[admin@cryptpad.priveasy.org/lnMIIaG1jLSWINgwMhWhoLcJQKRZw1GXCgB7SUM-hjU=]",
     ],
 
     /* =====================
