@@ -1,8 +1,9 @@
 # Local Entries:
-
 127.0.0.1	localhost	{{ hostname }}
 ::1	localhost	ip6-localhost	ip6-loopback	{{ hostname }}
 ff02::1	ip6-allnodes
 ff02::2	ip6-allrouters
 
 # Public Entries:
+{{ ipv4_address }}{{#hostnames}}	{{.}}{{/hostnames}}
+{{ ipv6_address }}{{#hostnames}}	{{.}}{{/hostnames}}

@@ -1,3 +1,0 @@
-{{ ipv4_address }}{{#hostnames}}	{{.}}{{/hostnames}}
-
-{{ ipv6_address }}{{#hostnames}}	{{.}}{{/hostnames}}

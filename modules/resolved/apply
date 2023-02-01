@@ -1,3 +1,6 @@
 mo resolved.conf > /etc/systemd/resolved.conf
 
-systemctl restart systemd-resolved
+if [ "$(systemctl is-enabled systemd-resolved)" != "disabled" ]
+then
+    systemctl restart systemd-resolved
+fi

@@ -57,6 +57,17 @@ fa_func_log Info "Upgrading all packages..."
 apt-get clean
 apt-get update
 apt-get upgrade -y
+
+
+fa_func_log Info "Removing unecessary packages..."
+
+if [ -n "$(which netfilter-persistent)" ]
+then
+    netfilter-persistent flush
+    netfilter-persistent stop
+    apt-get remove --purge netfilter-persistent -y
+fi
+
 apt-get autoclean && apt-get autoremove --purge -y
 
 fa_func_log Info "Installing basic, administrative packages..."

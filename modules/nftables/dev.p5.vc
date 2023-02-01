@@ -4,14 +4,14 @@ flush ruleset
 
 
 table inet Firewall {
-	set rateLimitedIPv4 {
+	set blocked_ipv4 {
 		type ipv4_addr
 		size 131072
 		flags dynamic,timeout
 		timeout 3h
 	}
 
-	set rateLimitedIPv6 {
+	set blocked_ipv6 {
 		type ipv6_addr
 		size 131072
 		flags dynamic,timeout
@@ -19,33 +19,120 @@ table inet Firewall {
 	}
 
 	chain inbound {
-		type filter hook input priority filter; policy drop;
+		type filter hook input priority filter
+		policy drop
 
-		# Connection-Based:
-		ct state { invalid } counter packets 0 bytes 0 drop
-		ct state { established, related } counter packets 0 bytes 0 accept
 
-		# ICMP Traffic (Based On: https://datatracker.ietf.org/doc/html/rfc4890#section-4):
-		ip protocol icmp icmp type { echo-reply, destination-unreachable, echo-request } counter packets 0 bytes 0 accept
-		ip6 nexthdr ipv6-icmp icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem, echo-request, echo-reply, mld-listener-query, mld-listener-report, mld-listener-done, nd-router-solicit, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, ind-neighbor-solicit, ind-neighbor-advert, mld2-listener-report, 148, 149, 151, 152, 153 } counter packets 0 bytes 0 accept
 
-		# Loopback Interface:
-		iif "lo" accept
-		iif != lo ip daddr 127.0.0.1/8 counter packets 0 bytes 0 drop
-		iif != lo ip6 daddr ::1/128 counter packets 0 bytes 0 drop
+		##### Set Rate Limits #####
+		## Web Traffic:
+		tcp dport 80 limit rate over 128 kbytes/hour burst 64 kbytes add @blocked_ipv4 { ip saddr } \
+		comment "Timeout IPv4 addresses sending over 128 kbytes of traffic per hour"
+		# Very little web traffic should reach port 80, as nearly all traffic to this port will
+		# result in a redirect to port 443 for an encrypted connection
 
-		# Rate Limiting:
-		tcp dport 80 add @rateLimitedIPv4 { ip saddr limit rate over 128 kbytes/minute burst 64 kbytes } counter packets 0 bytes 0 drop
-		tcp dport 80 add @rateLimitedIPv6 { ip6 saddr limit rate over 128 kbytes/minute burst 64 kbytes } counter packets 0 bytes 0 drop
-		tcp dport 443 add @rateLimitedIPv4 { ip saddr limit rate over 128 kbytes/minute burst 64 kbytes } counter packets 0 bytes 0 drop
-		tcp dport 443 add @rateLimitedIPv6 { ip6 saddr limit rate over 128 kbytes/minute burst 64 kbytes } counter packets 0 bytes 0 drop
+		tcp dport 80 limit rate over 128 kbytes/hour burst 64 kbytes add @blocked_ipv6 { ip6 saddr } \
+		comment "Timeout IPv6 addresses sending over 128 kbytes of traffic per hour"
+		# Very little web traffic should reach port 80, as nearly all traffic to this port will
+		# result in a redirect to port 443 for an encrypted connection
 
-		# Web Traffic:
-		tcp dport 80 counter packets 0 bytes 0 accept
-		tcp dport 443 counter packets 0 bytes 0 accept
+		tcp dport 443 limit rate over 300 mbytes/hour burst 256 mbytes add @blocked_ipv4 { ip saddr } \
+		comment "Timeout IPv4 addresses sending over 300 mbytes of traffic per hour"
+		# This rate limit is much higher than usual, because this server hosts a cryptpad instance
+		# which utilizes large amounts of network traffic (including file uploads)
+
+		tcp dport 443 limit rate over 300 mbytes/hour burst 256 mbytes add @blocked_ipv6 { ip6 saddr } \
+		comment "Timeout IPv6 addresses sending over 300 mbytes of traffic per hour"
+		# This rate limit is much higher than usual, because this server hosts a cryptpad instance
+		# which utilizes large amounts of network traffic (including file uploads)
+		###########################
+
+
+
+		##### Explicitly Drop #####
+		## Blocked:
+		ip saddr @blocked_ipv4 counter packets 0 bytes 0 drop \
+		comment "Drop all traffic from blocked IPv4 addresses"
+
+		ip6 saddr @blocked_ipv6 counter packets 0 bytes 0 drop \
+		comment "Drop all traffic from blocked IPv6 addresses"
+
+
+		## Connection State:
+		ct state { invalid } counter packets 0 bytes 0 drop \
+		comment "Drop any packets with an invalid connection state"
+
+
+		## Loopback Interface:
+		iif != lo ip daddr 127.0.0.1/8 counter packets 0 bytes 0 drop \
+		comment "Drop all packets destined for localhost that don't come from the loopback interface"
+
+		iif != lo ip6 daddr ::1/128 counter packets 0 bytes 0 drop \
+		comment "Drop all packets destined for localhost that don't come from the loopback interface"
+		###########################
+
+
+
+		#### Explicitly Accept ####
+		## ICMP Traffic:
+		ip protocol icmp icmp type {
+			echo-reply,
+			destination-unreachable,
+			echo-request
+		} counter packets 0 bytes 0 accept \
+		comment "Only allow pings and destination unreachable ICMP packets"
+
+		ip6 nexthdr ipv6-icmp icmpv6 type {
+			destination-unreachable,
+			packet-too-big,
+			time-exceeded,
+			parameter-problem,
+			echo-request,
+			echo-reply,
+			mld-listener-query,
+			mld-listener-report,
+			mld-listener-done,
+			nd-router-solicit,
+			nd-router-advert,
+			nd-neighbor-solicit,
+			nd-neighbor-advert,
+			ind-neighbor-solicit,
+			ind-neighbor-advert,
+			mld2-listener-report,
+			148,
+			149,
+			151,
+			152,
+			153
+		} counter packets 0 bytes 0 accept \
+		comment "Only allow pings, destination unreachable, and any other ICMP packets that are necessary for IPv6 to properly function"
+		# Based on: https://datatracker.ietf.org/doc/html/rfc4890#section-4
+
+
+		## Loopback Interface:
+		iif "lo" accept \
+		comment "Accept all packets on the loopback interface (originating from localhost)"
+
+
+		## Web Traffic:
+		tcp dport 80 counter packets 0 bytes 0 accept \
+		comment "Allow unencrypted web traffic"
+
+		tcp dport 443 counter packets 0 bytes 0 accept \
+		comment "Allow encrypted web traffic"
+
 
 		# SSH Traffic:
-		tcp dport 22 counter packets 0 bytes 0 accept
-		tcp dport {{ ssh_port }} counter packets 0 bytes 0 accept
+		tcp dport 22 counter packets 0 bytes 0 accept \
+		comment "Allow all TCP traffic to the assigned SSH port"
+
+		tcp dport {{ ssh_port }} counter packets 0 bytes 0 accept \
+		comment "Allow all TCP traffic to the SSH port"
+
+
+		## Connection State:
+		ct state { established, related } counter packets 0 bytes 0 accept \
+		comment "Accept any packets related to an established connection"
+		###########################
 	}
 }
