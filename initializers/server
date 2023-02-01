@@ -96,6 +96,27 @@ dpkg -i /tmp/fail2ban.deb
 rm -f /tmp/fail2ban.deb
 
 
+fa_func_log Info "Installing Docker Engine..."
+# Installation instructions: https://docs.docker.com/engine/install/ubuntu/
+
+# Install dependencies:
+apt-get update
+apt-get install -y ca-certificates gnupg lsb-release
+
+# Add Docker's official GPG key:
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+| gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# Set up the Docker repository:
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+| tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install the latest version of Docker Engine, containerd, and Docker Compose:
+apt-get update
+apt-get install -y containerd.io docker-ce docker-ce-cli docker-compose-plugin
+
+
 fa_func_log Info "Setting up SSH keys..."
 
 echo "Please paste then write out the SSH public key of the unique, securely-
